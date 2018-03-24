@@ -101,3 +101,5 @@ ENV/
 .mypy_cache/
 
 .flake8
+.DS_Store
+temp.pcap
