@@ -11,12 +11,20 @@ import time
 def enable_ip_forwarding():
   print("[*] Enabling IP Forwarding...")
   if sys.platform.startswith('linux'):
-    os.system("sudo sysctl net.ipv4.ip_forward=1")
+    result = os.system("sudo sysctl net.ipv4.ip_forward=1")
   elif sys.platform.startswith('darwin'):
-    os.system("sudo sysctl net.inet.ip.forwarding=1")
+    result = os.system("sudo sysctl net.inet.ip.forwarding=1")
   else:
     print("[!] Unsupported platform! Can't enable IP forwarding")
     raise NotImplementedError("Unsupported platform")
+
+  if result > 0:
+    print("[!] Error trying to enable IP forwarding")
+    print("[!] Received Exit Status " + str(result))
+    print("[!] Exiting...")
+    # unregister disable_ip_forwarding since we know we didn't do it successfully
+    atexit.unregister(disable_ip_forwarding)
+    sys.exit(1)
 
 
 # This will ensure we turn off IP forwarding for all "normal" modes of exiting.
@@ -95,6 +103,8 @@ def mitm():
       # sniffer()
     except KeyboardInterrupt:
       reARP()
+      print("[*] User Requested Shutdown")
+      print("[*] Exiting...")
       return
 
 
