@@ -7,6 +7,8 @@ import sys
 import os
 import time
 
+last_session_filename = ".last_session"
+
 
 def enable_ip_forwarding():
   print("[*] Enabling IP Forwarding...")
@@ -75,6 +77,40 @@ def sniffer():
     wrpcap("temp.pcap", pkts)
 
 
+def parse_session_file():
+  try:
+    last_interface = ''
+    last_victim_ip = ''
+    last_gate_ip = ''
+    last_session_path = os.path.join(sys.path[0], last_session_filename)
+    with open(last_session_path, 'r') as f:
+      line = f.readline()
+      last_interface = line.strip()
+
+      line = f.readline()
+      last_victim_ip = line.strip()
+
+      line = f.readline()
+      last_gate_ip = line.strip()
+
+      return last_interface, last_victim_ip, last_gate_ip
+  except OSError:
+    # If we fail trying to read, just continue as is
+    return last_interface, last_victim_ip, last_gate_ip
+
+
+def write_session_file(last_if, last_victim, last_gate):
+  last_session_path = os.path.join(sys.path[0], last_session_filename)
+  try:
+    with open(last_session_path, 'w') as f:
+      f.write(last_if + '\n')
+      f.write(last_victim + '\n')
+      f.write(last_gate + '\n')
+  except OSError:
+    # If we fail writing, fail silently
+    pass
+
+
 def mitm():
   try:
     victim_mac = get_mac(victim_ip)
@@ -108,10 +144,37 @@ def mitm():
 
 
 if __name__ == '__main__':
+  # Try to read info written from last session, so we can provide
+  # defaults to the input.
+  last_if, last_victim, last_gate = parse_session_file()
+
   try:
-    interface = input("[*] Enter Desired Interface: ")
-    victim_ip = input("[*] Enter Victim IP: ")
-    gate_ip = input("[*] Enter Router IP: ")
+    if last_if:
+      interface = input("[*] Enter Desired Interface ({}): ".format(last_if))
+      if not interface:
+        interface = last_if
+    else:
+      interface = input("[*] Enter Desired Interface: ")
+    last_if = interface
+
+    if last_victim:
+      victim_ip = input("[*] Enter Victim IP ({}): ".format(last_victim))
+      if not victim_ip:
+        victim_ip = last_victim
+    else:
+      victim_ip = input("[*] Enter Victim IP: ")
+    last_victim = victim_ip
+
+    if last_gate:
+      gate_ip = input("[*] Enter Router IP ({}): ".format(last_gate))
+      if not gate_ip:
+        gate_ip = last_gate
+    else:
+      gate_ip = input("[*] Enter Router IP: ")
+    last_gate = gate_ip
+
+    write_session_file(last_if, last_victim, last_gate)
+
     enable_ip_forwarding()
     mitm()
   except KeyboardInterrupt:

@@ -103,3 +103,4 @@ ENV/
 .flake8
 .DS_Store
 temp.pcap
+.last_session
